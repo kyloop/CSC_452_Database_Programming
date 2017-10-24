@@ -1,0 +1,157 @@
+Kai_Chung_Ying_hw5.txt
+
+2)
+Create or replace Procedure check_dpucc_user_login
+(
+    in_dpucc_id number,
+    in_password varchar2,
+    out_code out varchar2
+)
+AS
+    v_n number;
+    v_acc_lock_out varchar2(5);
+    v_password varchar2(50);
+    v_att_ct number :=0;
+    v_date date;
+begin
+  select count(*)
+  into v_n
+  from DPUCC_USER
+  where DPUCC_ID = in_dpucc_id;
+  
+  --CONDITION #1
+  if v_n=0 then
+      out_code := 'err_bad_id';
+      RETURN;
+  ELSE
+      select is_account_locked_out,password,FAILED_PASSWORD_ATTEMPT_COUNT
+      into v_acc_lock_out,v_password,v_att_ct
+      from DPUCC_USER
+      where DPUCC_ID = to_char(in_dpucc_id);
+      
+      --CONDITION #2
+      if v_n=1 and v_acc_lock_out='Y' THEN
+          out_code := 'err_locked_out';
+      ELSE
+      
+            --CONDITION #3
+            if v_n=1 and v_acc_lock_out='N'and v_password=in_password THEN
+                select sysdate into v_date from dual;
+                update DPUCC_USER set LAST_SUCCESSFUL_LOGIN_TIME=v_date  where DPUCC_ID = in_dpucc_id;
+                update DPUCC_USER set FAILED_PASSWORD_ATTEMPT_COUNT=0 where DPUCC_ID = in_dpucc_id;
+                update DPUCC_USER set LAST_FAILED_LOGIN_TIME = CAST(NULL As DATE)  where DPUCC_ID = in_dpucc_id;
+                out_code := 'ok';
+             ELSE
+                --CONDITION #4 (FAILED_PASSWORD_ATTEMPT_COUNT!=5)
+                if v_n=1 and v_acc_lock_out='N'and v_password!=in_password and v_att_ct!=5  THEN
+                    select sysdate into v_date from dual;
+                    update DPUCC_user set FAILED_PASSWORD_ATTEMPT_COUNT=v_att_ct+1 where DPUCC_ID = in_dpucc_id;
+                    update DPUCC_USER set LAST_FAILED_LOGIN_TIME = v_date  where DPUCC_ID = in_dpucc_id;
+                    out_code:='err_bad_pwd';
+                ELSE
+                    --CONDITION #4 (FAILED_PASSWORD_ATTEMPT_COUNT=5)
+                    select sysdate into v_date from dual;
+                    update DPUCC_user set FAILED_PASSWORD_ATTEMPT_COUNT=v_att_ct+1 where DPUCC_ID = in_dpucc_id;
+                    update DPUCC_USER set is_account_locked_out='Y' where DPUCC_ID = in_dpucc_id;
+                    update DPUCC_USER set LAST_ACCOUNT_LOCKED_OUT_TIME = v_date where DPUCC_ID = in_dpucc_id;
+                    update DPUCC_USER set LAST_FAILED_LOGIN_TIME = v_date where DPUCC_ID = in_dpucc_id;
+                    out_code:='err_bad_pwd_5';
+                END if;
+            end if;
+      end if;
+  end if;
+  EXCEPTION 
+            WHEN others then
+              null;
+end check_dpucc_user_login;
+
+
+3)
+CREATE OR REPLACE PROCEDURE check_dpucc_user_password
+( 
+    in_dpucc_id   NUMBER,
+    in_current_password VARCHAR2,
+    in_new_password   VARCHAR2,
+    out_code      OUT VARCHAR2 
+) 
+AS
+    v_n number :=0;
+    v_pw varchar2(20);
+    v_len_pw number :=0;
+    v_up_case_ct number:=0;
+    v_low_case_ct number:=0;
+    v_numeric_ct number:=0;
+    v_date date;
+BEGIN
+    select count(*)
+    into v_n
+    from DPUCC_USER
+    where DPUCC_ID = in_dpucc_id;
+    --condition 1
+    if v_n =0 then
+      out_code := 'err_bad_id';
+    else
+        select password
+        into v_pw
+        from DPUCC_USER
+        where DPUCC_ID = in_dpucc_id;
+        --condition 2
+        if v_pw != in_current_password then
+            out_code := 'err_bad_curr_pwd';
+        else
+            --condition 3
+            if v_pw = in_new_password then
+            out_code := 'err_bad_new_pwd_1';
+            else
+                v_len_pw := length(in_new_password);
+                --condition 4
+                if v_len_pw<8 or v_len_pw>15 then
+                out_code := 'err_bad_new_pwd_2';
+                else
+                    select count(*)
+                    into v_up_case_ct
+                    from dual
+                    where REGEXP_LIKE(in_new_password,'[A-Z]');
+                    
+                    --Condition 5
+                    if v_up_case_ct = 0 then
+                    out_code := 'err_bad_new_pwd_3';
+                    else
+                        select count(*)
+                        into v_low_case_ct
+                        from dual
+                        where REGEXP_LIKE(in_new_password,'[a-z]');
+                        
+                        --condition 6
+                        if v_low_case_ct =0 then 
+                        out_code := 'err_bad_new_pwd_4';
+                        else
+                            select count(*)
+                            into v_numeric_ct
+                            from dual
+                            where REGEXP_LIKE(in_new_password,'[0-9]');
+                            
+                            --Condition 7
+                            if v_numeric_ct=0 then
+                            out_code := 'err_bad_new_pwd_5';
+                            else
+                                --Conditon 8
+                                select sysdate into v_date from dual;
+                                update DPUCC_USER set password = in_new_password  where DPUCC_ID = in_dpucc_id;
+                                update DPUCC_USER set LAST_PASSWORD_CHANGED_TIME = v_date where DPUCC_ID = in_dpucc_id;
+                                out_code := 'ok';
+                            end if;
+                        
+                        end if;
+                    end if;
+                
+                end if;
+            
+            end if;
+
+        end if;
+    end if;
+    EXCEPTION
+              WHEN others then
+              NULL;
+END check_dpucc_user_password;

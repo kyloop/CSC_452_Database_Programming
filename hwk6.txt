@@ -1,0 +1,131 @@
+Kai_Chung_Ying_hw6.txt
+
+1)
+Create or replace TRIGGER EMP_DEPT_HIST_TRG
+      BEFORE INSERT OR DELETE OR UPDATE OF DEPARTMENT_ID ON EMPLOYEE
+      FOR EACH ROW
+DECLARE
+    V_OLD_DEPT_NAME DEPARTMENT.DEPARTMENT_NAME%TYPE;
+    V_NEW_DEPT_NAME DEPARTMENT.DEPARTMENT_NAME%TYPE;
+    V_N NUMBER;
+    
+BEGIN
+    --INSERT New employees
+    IF INSERTING THEN
+      --Set Old department name is 'X' in any cases
+      V_OLD_DEPT_NAME:='X';
+      --Check if New department id is NULL or not
+       IF :NEW.DEPARTMENT_ID IS NULL THEN
+           V_NEW_DEPT_NAME:='X';
+        ELSE
+          SELECT DEPARTMENT_NAME
+          INTO V_NEW_DEPT_NAME
+          FROM DEPARTMENT
+          WHERE DEPARTMENT_ID = :NEW.DEPARTMENT_ID;
+        END IF;
+        
+        :NEW.employee_name := trim(upper(:NEW.employee_name));
+        :NEW.job_title := trim(upper(:NEW.job_title));
+        
+        --Insert the record to the TAB_EMP_DEPT_HIST Table
+        INSERT INTO TAB_EMP_DEPT_HIST VALUES(:NEW.EMPLOYEE_ID,
+                                              :NEW.EMPLOYEE_NAME,
+                                              V_OLD_DEPT_NAME,
+                                              V_NEW_DEPT_NAME,
+                                              'INSERT',
+                                               SYSDATE);
+        dbms_output.put_line('Insert_is_recorded!');
+                                               
+    --When Employee changes Departments
+    ELSIF UPDATING THEN   
+        --EXIT when New and Old Department ID are BOTH 1) NULL   OR   2)have SAME values
+        if (:NEW.DEPARTMENT_ID IS NULL AND :OLD.DEPARTMENT_ID IS NULL) 
+            OR :NEW.DEPARTMENT_ID = :OLD.DEPARTMENT_ID THEN
+            dbms_output.put_line('Invalid_department_id');
+            RETURN;
+        END IF;
+        
+        --Check if Old Department_ID is NULL or NOT
+        IF :OLD.DEPARTMENT_ID IS NULL THEN
+          V_OLD_DEPT_NAME:='X';
+
+        ELSE
+          SELECT DEPARTMENT_NAME
+          INTO V_OLD_DEPT_NAME
+          FROM DEPARTMENT
+          WHERE DEPARTMENT_ID=:OLD.DEPARTMENT_ID;
+        END IF;
+        
+        --Check if New Department_ID is NULL or NOT
+        IF :NEW.DEPARTMENT_ID IS NULL THEN
+          V_NEW_DEPT_NAME:='X';
+        ELSE
+          SELECT DEPARTMENT_NAME
+          INTO V_NEW_DEPT_NAME
+          FROM DEPARTMENT
+          WHERE DEPARTMENT_ID = :NEW.DEPARTMENT_ID;
+        END IF;
+        
+        --Insert the record to the TAB_EMP_DEPT_HIST Table
+        INSERT INTO TAB_EMP_DEPT_HIST VALUES(:NEW.EMPLOYEE_ID,
+                                              trim(upper(:NEW.EMPLOYEE_NAME)),
+                                              V_OLD_DEPT_NAME,
+                                              V_NEW_DEPT_NAME,
+                                              'UPDATE',
+                                              SYSDATE);
+        dbms_output.put_line('Update_is_recorded!');
+    ELSE
+        RETURN;
+    END IF;
+    
+    EXCEPTION 
+              WHEN OTHERS THEN
+                dbms_output.put_line('Error');
+    
+END;
+
+
+
+2)
+Create or Replace Trigger EMP_MIN_SAL_TRG
+  BEFORE INSERT or UPDATE on Employee
+  for each row
+ Declare
+    v_min_sal Tab_Minimum_salary.minimum_salary%type;
+    v_new_job_title Tab_Minimum_salary.job_title%type;
+    v_n number;
+ Begin
+    v_new_job_title :=TRIM(UPPER(:new.job_title));
+    
+    --Check if the job title is in the tab_minimum_salary table
+    select count(*)
+    into v_n
+    from Tab_Minimum_salary
+    where UPPER(job_title)= v_new_job_title;
+    
+    --if job title is NOT in the tab_minimum_salary table, then use job title as 'X'
+    if v_n = 0 then
+      select MINIMUM_SALARY
+      into v_min_sal
+      from Tab_Minimum_salary
+      where UPPER(job_title)= 'X';
+    else
+      --if job title is in the tab_minimum_salary table
+      select MINIMUM_SALARY
+      into v_min_sal
+      from Tab_Minimum_salary
+      where UPPER(job_title)= v_new_job_title;
+    end if;
+    
+    --Check if the New entered salary fulfill the minimum salary of the position
+    if :new.salary<v_min_sal then
+        :new.job_title :=v_new_job_title;
+        :new.salary :=v_min_sal;
+    else
+        :new.job_title :=v_new_job_title;
+    end if;
+    
+    EXCEPTION 
+              WHEN OTHERS THEN
+                dbms_output.put_line('Error');
+ end;

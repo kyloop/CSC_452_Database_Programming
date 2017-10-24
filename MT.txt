@@ -1,0 +1,326 @@
+Kai_Chung_Ying_MT.txt
+
+
+Part II:
+1)
+--Input from user
+Accept input_1 prompt 'Please enter the last name:';
+
+DECLARE
+  v_LAST_NAME  varchar2(200) :='&input_1';
+  v_n number;
+  full_name varchar2(200);
+  v_emp_status varchar2(10);
+  v_emp_type varchar2(10);
+
+  Cursor c_pilot (p_1 varchar2)is 
+                    select 
+                    e.employee_id,
+                    e.last_name,
+                    e.first_name,
+                    e.hire_date,
+                    e.employee_status,
+                    e.employee_type,
+                    NVL(p.pilot_type,'N/A') as pilot_type_2
+                    from Tab_employee e
+                    left outer join tab_pilot p
+                    ON e.EMPLOYEE_ID=p.EMPLOYEE_ID
+                    where upper(e.last_name)=upper(decode(p_1,'A',e.last_name,p_1))
+                    order by last_name,first_name,hire_date;
+  v_pilot c_pilot%rowtype;
+    
+BEGIN
+  --Check if there is any record of the input last_name
+  select count(*)
+  into v_n
+  from tab_employee
+  where upper(LAST_NAME)=upper(v_LAST_NAME);
+  
+  --Display the title of table
+  dbms_output.put_line(RPAD('EMP ID',10) 
+                      || RPAD('FULL NAME',18)
+                      || RPAD('HIRE DATE',15)
+                      || RPAD('EMP STATUS',13)
+                      || RPAD('EMP TYPE',13)
+                      || 'PILOT TYPE');
+  dbms_output.put_line(RPAD('-',100,'-'));
+  
+  --Display all the records of table if there is NO record found according to the input value
+  if v_n = 0 or v_last_name is NULL THEN
+  v_last_name:='A';
+    OPEN c_pilot (v_last_name);
+    fetch c_pilot into v_pilot;
+    LOOP
+        full_name:=v_pilot.last_name || ', '||v_pilot.first_name;
+        
+        --Convert AC and IN to long spelling term
+        if upper(v_pilot.employee_status) = 'AC' THEN
+          v_emp_status := 'Active';
+        ELSE
+          v_emp_status := 'Inactive';
+        end if;
+        
+        --Convert FT and PT to long spelling term
+        if upper(v_pilot.employee_type) = 'FT' THEN
+          v_emp_type := 'Full-Time';
+        ELSE
+          v_emp_type := 'Part-Time';
+        end if;
+        
+        dbms_output.put_line(RPAD(v_pilot.employee_id,10)
+                            ||Rpad(full_name,18)
+                            ||RPAD(v_pilot.hire_date,15)
+                            ||RPAD(v_emp_status,13)
+                            ||RPAD(v_emp_type,13)
+                            ||v_pilot.pilot_type_2);
+        fetch c_pilot into v_pilot;
+        --Exit when no record found from the table
+        exit when c_pilot%notfound;
+    end loop;
+    
+    CLOSE c_pilot;
+  ELSE --Process the following if records found according to the input value
+    OPEN c_pilot(v_last_name);
+    while v_n>0 loop --Looping based on the found record
+      FETCH c_pilot into v_pilot;
+        full_name:=v_pilot.last_name || ', '||v_pilot.first_name;
+        
+        --Convert AC and IN to long spelling term
+        if upper(v_pilot.employee_status) = 'AC' THEN
+          v_emp_status := 'Active';
+        ELSE
+          v_emp_status := 'Inactive';
+        end if;
+        
+        --Convert FT and PT to long spelling term
+        if upper(v_pilot.employee_type) = 'FT' THEN
+          v_emp_type := 'Full-Time';
+        ELSE
+          v_emp_type := 'Part-Time';
+        end if;
+        
+        dbms_output.put_line(RPAD(v_pilot.employee_id,10)
+                            ||Rpad(full_name,18)
+                            ||RPAD(v_pilot.hire_date,15)
+                            ||RPAD(v_emp_status,13)
+                            ||RPAD(v_emp_type,13)
+                            ||v_pilot.pilot_type_2);
+      V_n :=v_n-1; --Counting the proccessed record for the while-loop
+    end loop;
+    CLOSE c_pilot;
+  end if;
+END;
+
+
+2b)
+--User input
+Accept input_1 prompt 'Please enter 1 or 2:';
+
+declare
+  v_choice number := '&input_1';
+  v_output varchar2(200);
+  
+  Cursor c_birth1 (p_1 number) is 
+                    select BIRTHDAY_MONTH,birthday_day, birthday_rank
+                    from tab_birthday
+                    where BIRTHDAY_MONTH=p_1
+                    order by BIRTHDAY_MONTH, birthday_rank ;
+  
+  Cursor c_birth2 (p_2 number)is 
+                    select BIRTHDAY_MONTH,birthday_day, birthday_rank
+                    from tab_birthday
+                    where BIRTHDAY_MONTH=p_2
+                    order by BIRTHDAY_MONTH, birthday_rank DESC;
+                  
+  v_birth1 c_birth1%rowtype;
+  v_birth2 c_birth2%rowtype;
+
+begin
+  if v_choice is null then --Display the following if the user input is not 1 or 2
+    dbms_output.put_line('Invalid input');
+  else
+  if v_choice!=1 and v_choice!=2 then
+    dbms_output.put_line('Invalid number: '|| to_char(v_choice));
+  else
+  --Process when User input =1
+  if v_choice = 1 then
+    dbms_output.put_line(RPAD('Month',13) || 'Most Popular Birthdays (Day/Rank)');
+    dbms_output.put_line(RPAD('-',47,'-'));
+      for i_mon in 1..12 loop --Set up for lopp for 12 months
+            v_output := LPAD(to_char(i_mon),5)||'    ';
+          OPEN c_birth1(i_mon);
+            loop
+                fetch c_birth1 into v_birth1;
+                
+                v_output:=v_output||to_char(v_birth1.birthday_day,'00') ||'/'||TRIM(to_char(v_birth1.birthday_rank,'099'))||' '; 
+                exit when c_birth1%rowcount>4;
+            end loop;
+            dbms_output.put_line(v_output);
+            v_output:='';
+          CLOSE c_birth1;
+      end loop;
+  else
+  --Process when User input=2
+  if v_choice = 2 then
+    dbms_output.put_line(RPAD('Month',12) || 'Least Popular Birthdays (Day/Rank)');
+    dbms_output.put_line(RPAD('-',47,'-'));
+      for i_mon in 1..12 loop --Set up for lopp for 12 months
+          v_output := LPAD(to_char(i_mon),4)||'    ';
+          OPEN c_birth2(i_mon);
+            loop
+                fetch c_birth2 into v_birth2;
+                v_output:=v_output||to_char(v_birth2.birthday_day,'00')||'/'||TRIM(to_char(v_birth2.birthday_rank,'099'))||' '; 
+                exit when c_birth2%rowcount>4;
+            end loop;
+            dbms_output.put_line(v_output);
+            v_output:='';
+          CLOSE c_birth2;
+      end loop;
+  end if;
+  end if;
+  end if;
+  end if;
+end;
+
+3b)
+DECLARE
+v_max_day number:=0;
+v_day varchar2(10);
+v_n number:=0;
+v_emp_id number;
+v_emp_name varchar2(50);
+v_emp_sal number;
+v_count_man_emp number;
+v_dept_name varchar2(50);
+v_man_name varchar2(50);
+v_man_sal varchar2(10);
+
+Cursor c_emp1 is
+                  select wk_day, wk_num,num_day
+                   from 
+                   (select to_char(hire_date,'Day') as wk_day, to_char(hire_date,'D') as wk_num,count(*) as num_day
+                    from employee
+                    GROUP BY to_char(hire_date,'Day'), to_char(hire_date,'D'))
+  --where num_day=4
+  order by  wk_num ,num_day DESC;
+                      
+Cursor c_emp2 (p_1 number) is
+                 select wk_day, wk_num
+                  from 
+                      (select to_char(hire_date,'Day') as wk_day, to_char(hire_date,'D') as wk_num,count(*) as num_day
+                      from employee
+                      GROUP BY to_char(hire_date,'Day'),to_char(hire_date,'D'))
+                      where num_day = p_1
+                      order by wk_num;
+                      
+                      
+Cursor c_emp3 (p_2 varchar2) is                      
+                      select employee_name,
+                              TRIM(to_char(hire_date,'Day')),
+                              HIRE_DATE,
+                              job_title,
+                              Salary
+                      from employee
+                      where UPPER(TRIM(to_char(hire_date,'Day')))=upper(TRIM(p_2))
+                      order by HIRE_DATE,employee_name;
+
+v_emp1 c_emp1%rowtype;
+v_emp2 c_emp2%rowtype;
+v_emp3 c_emp3%rowtype;
+
+BEGIN
+--Finding the weekday which the highest number of employees were hired.
+open c_emp1;
+  fetch c_emp1 into v_emp1;
+  while c_emp1%found loop
+      if v_max_day<v_emp1.num_day THEN
+        v_max_day:=v_emp1.num_day;
+      end if;
+      fetch c_emp1 into v_emp1;
+  end loop;
+close c_emp1;
+
+--Based on the above found weekday, query the records
+open c_emp2 (v_max_day);
+  fetch c_emp2 into v_emp2;
+  while c_emp2%found loop
+        
+        --Counting the number of employees with specified weekday
+        select count(*)
+        into v_n
+        from employee
+        where upper(TRIM(to_char(hire_date,'Day')))=upper(TRIM(v_emp2.wk_day));
+        
+        --Display the boundary lines and title of table
+        dbms_output.put_line(RPAD('=',121,'='));
+        dbms_output.put_line(upper(v_emp2.wk_day)||'('||v_n||' employees)');
+        dbms_output.put_line(RPAD('HIRE DATE',12)
+                             ||RPAD('NAME',12 )
+                              ||RPAD('JOB TITLE',25)
+                              ||LPAD('SALARY',10)      
+                              ||LPAD('# OF EMP',11)
+                              ||LPAD('DEPARTMENT NAME',19)
+                              ||LPAD('MANAGER NAME',15)
+                              ||LPAD('MANAGER SALARY',17));
+        dbms_output.put_line(RPAD('-',121,'-'));
+        
+        open c_emp3 (TRIM(v_emp2.wk_day));
+        loop
+          fetch c_emp3 into v_emp3;
+          exit when c_emp3%notfound;
+          
+          --find number of emp is managed by the employee
+          select e1.employee_id,e1.employee_name,count(e2.manager_id) as cc,e1.salary
+          INTO v_emp_id,v_emp_name,v_count_man_emp,v_emp_sal
+          from employee e1
+          left outer join employee e2
+          on e1.employee_id = e2.manager_id
+          where e1.employee_name=UPPER(TRIM(v_emp3.employee_name))
+          group by e1.employee_id,e1.employee_name,e1.salary
+          order by e1.employee_name DESC;
+          
+          --find department name
+          select e.employee_name, NVL(d.department_name,'------')
+          into v_emp_name,v_dept_name
+          from employee e
+          left outer join department d
+          on e.department_id=d.department_id
+          where e.employee_name=UPPER(TRIM(v_emp3.employee_name));
+      
+           --find manager name
+          select e2.employee_name, NVL(e1.employee_name,'-----'),e1.salary
+          into v_emp_name,v_man_name,v_man_sal
+          from employee e1
+          FULL outer join employee e2
+          on e1.employee_id=e2.manager_id
+          where e2.employee_name=(UPPER(TRIM(v_emp3.employee_name)));
+         
+         --Condition if manager salary is NULL value
+         if v_man_sal is null Then
+         --Display the records
+          dbms_output.put_line(RPAD(v_emp3.hire_date,12)
+                              ||RPAD(v_emp3.employee_name,12 )
+                              ||RPAD(v_emp3.job_title,25)
+                              ||RPAD(to_char(v_emp_sal,'$9,000.00'),20)
+                              ||RPAD(v_count_man_emp,5)
+                              ||RPAD(v_dept_name,18)
+                              ||RPAD(v_man_name,19)
+                              ||LPAD('------',10));
+          else --Condition if manager salary is NOT NULL value
+          --Display the records
+          dbms_output.put_line(RPAD(v_emp3.hire_date,12)
+                              ||RPAD(v_emp3.employee_name,12 )
+                              ||RPAD(v_emp3.job_title,25)
+                              ||RPAD(to_char(v_emp_sal,'$9,000.00'),20)      
+                              ||RPAD(v_count_man_emp,5)
+                              ||RPAD(v_dept_name,18)
+                              ||RPAD(v_man_name,19)
+                              ||to_char(v_man_sal,'$9,000.00'));
+        end if;
+        end loop;
+        close c_emp3;
+      fetch c_emp2 into v_emp2;
+  end loop;
+close c_emp2;
+end;
+

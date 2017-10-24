@@ -1,0 +1,206 @@
+Kai_Chung_Ying_hw4.txt
+
+1b)
+DECLARE
+  v_output varchar2(200) :='EMPLOYEE NAME AND SALARY: ';
+  v_emp_name EMPLOYEE.EMPLOYEE_NAME%type;
+  v_sal EMPLOYEE.SALARY%type;
+  v_dept_id DEPARTMENT.DEPARTMENT_ID%type;
+  v_sal_dot7 EMPLOYEE.SALARY%type;
+  V_N number;
+  
+  --Setting the first cursor
+  CURSOR c_get_dept_id is 
+              select d.DEPARTMENT_ID,
+                      d.department_name,
+                      d.location,
+                      min(e.hire_date) min_date,
+                      max(e.hire_date) max_date,
+                      avg(e.salary) avg_sal,
+                      min(e.salary) min_sal,
+                      max(e.salary) max_sal,
+                      0.7*max(salary)  AS max_sal_dot7                      
+              from department d
+              INNER JOIN employee e
+              on d.department_id = e.department_id
+              group by d.DEPARTMENT_ID,d.department_name,d.location
+              order by d.DEPARTMENT_ID;
+  --Setting the first cursor
+  CURSOR c_get_emp_id  is 
+              select EMPLOYEE_NAME,SALARY
+              from employee
+              where department_id=v_dept_id
+              order by employee_name;
+
+  --Variables depens on the cursor variable row type
+  v_get_dept_id   c_get_dept_id%rowtype;
+  v_get_emp_id    c_get_emp_id%rowtype;
+  
+ 
+  
+BEGIN
+    ----------- Cursor #1 ----------
+    OPEN c_get_dept_id;
+      loop
+        fetch c_get_dept_id into v_get_dept_id;
+        exit when c_get_dept_id%notfound;      
+        
+        --Check the number of employee above the 70% of maximum salary on specific assigned department
+        SELECT COUNT(*)
+        INTO V_N
+        FROM EMPLOYEE
+        WHERE DEPARTMENT_ID=v_get_dept_id.DEPARTMENT_ID
+        AND SALARY > v_get_dept_id.max_sal_dot7;
+        
+        --Run the following if number of employee above 70% of maximum salary 
+        if v_n>2 then 
+          DBMS_OUTPUT.PUT_line(RPAD('DEPARTMENT ID:',30)||v_get_dept_id.department_id);
+          DBMS_OUTPUT.PUT_line(RPAD('DEPARTMENT NAME:',30)||v_get_dept_id.department_name);
+          DBMS_OUTPUT.PUT_line(RPAD('LOCATION:',30)||v_get_dept_id.location);
+          DBMS_OUTPUT.PUT_line(RPAD('EARLIEST HIRE DATE',30)||to_char(v_get_dept_id.min_date,'DD-MON-YYYY'));
+          DBMS_OUTPUT.PUT_line(RPAD('LATEST HIRE DATE',30)||to_char(v_get_dept_id.max_date,'DD-MON-YYYY'));
+          DBMS_OUTPUT.PUT_line(RPAD('AVERAGE SALARY',30)||LTRIM(to_char(v_get_dept_id.avg_sal,'$9,990.00')));
+          DBMS_OUTPUT.PUT_line(RPAD('MINIMUM SALARY',30)||LTRIM(to_char(v_get_dept_id.min_sal,'$9,990.00')));
+          DBMS_OUTPUT.PUT_line(RPAD('MAXIMUM SALARY',30)||LTRIM(to_char(v_get_dept_id.max_sal,'$9,990.00')));
+          DBMS_OUTPUT.PUT_line(RPAD('70% OF MAXIMUM SALARY:',30)||LTRIM(to_char(v_get_dept_id.max_sal_dot7,'$9,990.00')));
+          DBMS_OUTPUT.PUT_line('There are ' || to_char(v_n) || ' employees whose salaries are above ' || LTRIM(to_char(v_get_dept_id.max_sal_dot7,'$9,990.00'))||'.');
+          
+          --Assign the department id to local variable
+          v_dept_id := v_get_dept_id.DEPARTMENT_ID;            
+        
+        ----------CURSOR 2--------
+          OPEN c_get_emp_id;
+            LOOP
+              fetch c_get_emp_id into v_get_emp_id;            
+              exit when c_get_emp_id%notfound;      
+                --condition to print the employees info for departments with more than 2 employees
+               if v_output ='EMPLOYEE NAME AND SALARY: 'THEN
+                  --store string in the local variable
+                  v_output:= v_output||(v_get_emp_id.employee_name)|| to_char(v_get_emp_id.salary,'$9,990.00');
+                ELSE
+                  --store string in the local variable
+                  v_output:= v_output||'; '||(v_get_emp_id.employee_name)|| to_char(v_get_emp_id.salary,'$9,990.00');
+               end if;
+            END LOOP;
+            DBMS_OUTPUT.PUT_line(v_output);
+            DBMS_OUTPUT.PUT_line(' ');
+          CLOSE c_get_emp_id;
+        
+        --reset local variable
+        v_output :='EMPLOYEE NAME AND SALARY: ';
+      
+      END IF;
+    end loop;
+    CLOSE c_get_dept_id; 
+END;
+
+
+2b)
+ACCEPT input1 prompt 'Please ener the region name (CHILD_REGION):';
+declare
+  v_input varchar2(100) :='&input1';
+  v_n number;
+  v_order number :=1;
+  v_kk number :=1;
+  v_output varchar2 (200);
+  CURSOR c_wr (p_1 varchar2) is
+      SELECT PARENT_REGION FROM WORLD_REGION WHERE upper(CHILD_REGION)=upper(p_1)order by parent_region DESC;
+  v_wr c_wr%rowtype;
+begin
+  select count(*) into v_n from world_region where upper(child_region) = upper(v_input);
+  dbms_output.put_line('USER INPUT:');
+  dbms_output.put_line(v_input);
+  dbms_output.put_line(' ');
+  dbms_output.put_line('MY OUTPUT:');
+  if v_n=0 then
+    dbms_output.put_line(v_input || ' is not in the table.');
+  ELSE
+    v_output := '('||to_char(v_order)||') ['||upper(v_input)||']';
+  while v_kk=1 LOOP
+  OPEN c_wr (v_input);
+    fetch c_wr into v_wr;
+    exit when c_wr%notfound;
+      if v_wr.parent_region='***' then
+        v_kk := 0;
+      else
+       v_order:= v_order +1;
+        v_output := v_output || ' ==> ('|| to_char(v_order) || ') [' ||upper(v_wr.parent_region) || ']';
+      end if;
+    v_input:=v_wr.parent_region;
+  CLOSE c_wr;
+  end loop;
+  dbms_output.put_line('NUMBER OF REGION NAMES: ' || to_char(v_order));
+  dbms_output.put_line(v_output);
+  end if;  
+end;
+
+
+3)
+ACCEPT input1 prompt 'Please ener the region name (CHILD_REGION)';
+declare
+  v_input varchar2(200) :='&input1';
+  v_input2 varchar2(200);
+  v_parent_region varchar2(200);
+  counter number :=1;
+  v_seq number:=0;
+  v_dash number:=1;
+  v_n number;
+  v_order number :=1;
+  v_kk number :=1;
+  v_output varchar2 (200);
+      
+  CURSOR c_wr2 (p_2 varchar2) is
+      SELECT PARENT_REGION FROM WORLD_REGION WHERE upper(CHILD_REGION)=upper(p_2);
+  v_wr2 c_wr2%rowtype;
+  
+begin
+  select count(*) into v_n from world_region where upper(child_region) = upper(v_input);
+  dbms_output.put_line('USER INPUT:');
+  dbms_output.put_line(v_input);
+  dbms_output.put_line(' ');
+  dbms_output.put_line('MY OUTPUT:');
+  if v_n=0 then
+    dbms_output.put_line(v_input || ' is not in the table.');
+  ELSE
+   open c_wr2 (v_input);
+      while counter <=v_n loop
+          fetch c_wr2 into v_wr2;
+          v_input2:=v_wr2.parent_region;
+          v_seq := v_seq +1;
+          v_output:= '('||v_seq||') ['||v_input||'] ';
+          
+          if v_input2='***'then
+            dbms_output.put_line(v_output);
+            exit when v_input2='***';
+          else
+          v_seq := v_seq +1;
+          v_output:= v_output ||'(' ||v_seq||') '||'['||v_input2||'] ';
+          
+                loop                  
+                  SELECT PARENT_REGION  into v_parent_region FROM WORLD_REGION WHERE upper(CHILD_REGION)=upper(v_input2);
+                  v_input2:= v_parent_region;
+                  exit when v_input2='***';
+                  v_seq := v_seq +1;
+                  v_output:= v_output ||'('||v_seq||') '||'['||v_input2||'] ';
+                end loop;
+                dbms_output.put_line('NUMBER OF REGION NAMES: '|| to_char(v_seq));
+                dbms_output.put_line(v_output);
+                  while v_dash< v_n loop
+                    dbms_output.put_line(RPAD('-',20,'-'));
+                    v_dash:=v_dash+1;
+                  end loop;
+                v_seq:=0;
+                counter:=counter+1;
+        end if;
+      end loop;
+    close c_wr2;
+  end if;
+  EXCEPTION
+  WHEN OTHERS THEN
+    dbms_output.put_line('NUMBER OF REGION NAMES: '|| to_char(v_seq));
+    DBMS_OUTPUT.PUT_LINE(v_output);
+end;
+
+
+
+

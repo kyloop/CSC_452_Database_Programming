@@ -1,0 +1,285 @@
+Kai_Chung_Ying_hw2.txt
+
+1)
+accept p_1 prompt 'Please enter employee ID: '
+DECLARE
+  v_input_id NUMBER := &p_1;
+  v_n number;
+  v_space number default 14;
+  v_ename employee.employee_name%type;
+  v_hire_date employee.hire_date%type;
+  v_job_title employee.job_title%type;
+  v_total_pay number(10);
+  v_manager_id EMPLOYEE.MANAGER_ID%type;
+  v_manager_name EMPLOYEE.EMPLOYEE_NAME%type;
+  v_manager_job_title employee.job_title%type;
+  v_manager_hire_date employee.hire_date%type;
+  v_manager_total_pay number(10);
+  
+  v_dept_id DEPARTMENT.DEPARTMENT_ID%type;
+  v_dept_name DEPARTMENT.DEPARTMENT_NAME%type;
+  v_dept_location DEPARTMENT.LOCATION%type;
+  
+  v_dept_count_employee number(4);
+  v_company_count_employee number (4);
+
+ 
+BEGIN
+
+  SELECT COUNT(*) 
+  INTO v_n 
+  FROM employee 
+  WHERE employee_id=v_input_id;
+  
+  dbms_output.put_line('User Input:');
+  dbms_output.put_line(to_char(v_input_id));
+  dbms_output.put_line('My Output:');
+  
+  --Check if employee id exist in the Table
+  IF v_n = 1 THEN
+    SELECT 
+    e.EMPLOYEE_NAME,
+    e.hire_date,
+    e.job_title,
+    NVL(e.salary,0)+ NVL(e.commission, 0),
+    e.manager_id,
+    e.department_id
+    INTO
+    v_ename,
+    v_hire_date,
+    v_job_title,
+    v_total_pay,
+    v_manager_id,
+    v_dept_id
+    from employee e
+    where employee_id = v_input_id;
+    
+    dbms_output.put_line('----- EMPLOYEE -----');
+    dbms_output.put_line(RPAD('Name:',v_space) || UPPER(v_ename));
+    dbms_output.put_line(RPAD('Job Title:',v_space) || UPPER(v_job_title));
+    dbms_output.put_line(RPAD('Hire Date:',v_space) || to_char(v_hire_date,'DD-MON-YYYY'));
+    dbms_output.put_line(RPAD('Total Pay:',v_space) || LTRIM(to_char(v_total_pay,'$9,990.00')));
+    
+    IF v_manager_id is NULL THEN
+      dbms_output.put_line('----- Manager -----');
+      dbms_output.put_line(RPAD('Name:',v_space) || NVL(UPPER(v_manager_name),'N/A'));
+      dbms_output.put_line(RPAD('Job Title:',v_space) || NVL(UPPER(v_manager_job_title),'N/A'));
+      dbms_output.put_line(RPAD('Hire Date:',v_space) || NVL(to_char(v_manager_hire_date,'DD-MON-YYYY'),'N/A'));
+      dbms_output.put_line(RPAD('Total Pay:',v_space) || NVL(to_char(v_manager_total_pay,'$9,990.00'),'N/A'));
+    ELSE
+      select 
+      e.employee_name,
+      e.job_title,
+      e.hire_date,
+      NVL(e.salary,0)+ NVL(e.commission, 0)
+      INTO
+      v_manager_name,
+      v_manager_job_title,
+      v_manager_hire_date,
+      v_manager_total_pay
+      FROM employee e
+      WHERE e.employee_id=v_manager_id;
+      
+      dbms_output.put_line('----- Manager -----');
+      dbms_output.put_line(RPAD('Name:',v_space) || UPPER(v_manager_name));
+      dbms_output.put_line(RPAD('Job Title:',v_space) || UPPER(v_manager_job_title));
+      dbms_output.put_line(RPAD('Hire Date:',v_space) || to_char(v_manager_hire_date,'DD-MON-YYYY'));
+      dbms_output.put_line(RPAD('Total Pay:',v_space) || LTRIM(to_char(v_manager_total_pay,'$9,990.00')));
+    END IF;
+    
+    IF v_dept_id is NULL THEN      
+      dbms_output.put_line('----- Department -----');
+      dbms_output.put_line(RPAD('Name:',v_space,' ') || NVL(UPPER(v_dept_name),'N/A'));
+      dbms_output.put_line(RPAD('Location:',v_space,' ') || NVL(UPPER(v_dept_location),'N/A'));
+      dbms_output.put_line('Number of Employees: ' || 0);
+    ELSE
+      SELECT 
+      d.department_name,
+      d.location
+      INTO
+      v_dept_name,
+      v_dept_location           
+      FROM department d
+      WHERE d.department_id=v_dept_id;
+      
+      select count(*)
+      INTO v_dept_count_employee
+      from employee
+      where department_id = v_dept_id
+      group by department_id;
+      
+      dbms_output.put_line('----- Department -----');
+      dbms_output.put_line(RPAD('Name:',21,' ') || UPPER(v_dept_name));
+      dbms_output.put_line(RPAD('Location:',21,' ') || UPPER(v_dept_location));
+      dbms_output.put_line('Number of Employees: ' || to_char(v_dept_count_employee));
+    END IF;
+  
+    
+    SELECT count(*)
+    INTO v_company_count_employee
+    FROM employee;
+    dbms_output.put_line('----- Company -----');
+    dbms_output.put_line('Number of Employees: ' || v_company_count_employee);
+  
+  ELSE
+    dbms_output.put_line('My Output: ');
+    dbms_output.put_line(to_char(v_input_id) || ' is not in the EMPLOYEE table.');
+  END IF;
+
+END;
+
+
+
+2)
+accept input_1 prompt 'Please enter the department name: '
+
+DECLARE
+  v_input_dept_name VARCHAR2(25) := '&input_1';
+  v_n number;
+  v_dept_id DEPARTMENT.DEPARTMENT_ID%type;
+  v_dept_location DEPARTMENT.LOCATION%type;
+  v_count_employee number;
+  v_count_employee_31DEC number;
+  v_AVG_Total_Pay number;
+  v_AVG_Total_Pay_below_dept_AVG number;
+  v_AVG_Total_Pay_below_ALL_AVG number;
+
+BEGIN
+  select count(*)
+  into v_n
+  from department d
+  where d.DEPARTMENT_NAME = upper(v_input_dept_name);
+  
+  dbms_output.put_line('User Input:');
+  dbms_output.put_line(v_input_dept_name);
+  dbms_output.put_line('My Output: ');
+
+  IF v_n != 1 THEN
+    dbms_output.put_line(v_input_dept_name || ' is not in the EMPLOYEE table');
+  ELSE
+    dbms_output.put_line('Department Name: ' || upper(v_input_dept_name));
+    
+    --Part a and part b
+    SELECT d.department_id, d.location
+    INTO v_dept_id, v_dept_location
+    FROM department d
+    WHERE d.department_name=upper(v_input_dept_name);
+    dbms_output.put_line('a) ' || to_char(v_dept_id));
+    dbms_output.put_line('b) ' || v_dept_location);
+
+    --Part c
+    SELECT count(*)
+    INTO v_count_employee
+    FROM employee e
+    where e.department_id = v_dept_id;
+    dbms_output.put_line('c) ' || to_char(v_count_employee));
+    
+    --Part d
+    SELECT count(*)
+    INTO v_count_employee_31DEC
+    FROM employee e
+    where e.hire_date >= '31-DEC-2004' 
+    AND e.DEPARTMENT_ID=v_dept_id;
+    dbms_output.put_line('d) ' || to_char(v_count_employee_31DEC));
+
+    --Part e
+    SELECT NVL(AVG(NVL(e.salary,0)+NVL(e.commission,0)),0)
+    INTO v_AVG_Total_Pay
+    FROM employee e
+    where e.department_id = v_dept_id;
+    dbms_output.put_line('e) ' || LTRIM(to_char(v_AVG_Total_Pay, '$9,990.00')));
+    
+    --Part f
+    SELECT count(*)
+    INTO v_AVG_Total_Pay_below_dept_AVG
+    FROM employee
+    WHERE department_id=v_dept_id
+    AND (NVL(salary,0)+NVL(commission,0)) < (SELECT AVG(NVL(salary,0)+NVL(commission,0))
+                                           from employee
+                                            where department_id=v_dept_id);
+    dbms_output.put_line('f) ' || to_char(v_AVG_Total_Pay_below_dept_AVG));
+    
+    --Part g
+    SELECT count(*)
+    INTO v_AVG_Total_Pay_below_ALL_AVG
+    FROM employee
+    WHERE department_id=v_dept_id
+    AND (NVL(salary,0)+NVL(commission,0)) < (SELECT AVG(NVL(salary,0)+NVL(commission,0))
+                                           from employee);
+    dbms_output.put_line('g) ' || to_char(v_AVG_Total_Pay_below_ALL_AVG));
+    
+  END IF;
+END;
+
+
+
+3)
+DECLARE
+  lower_bound NUMBER :=0;
+  higher_bound number :=0;
+  v_n number;
+  
+BEGIN
+  For k in 0..19 Loop
+    lower_bound := k*500;
+    higher_bound := ((k * 500)+499.99);
+    select count(*)
+    into v_n
+    from employee
+    where salary >= lower_bound AND salary <= higher_bound;
+    dbms_output.put_line(to_char(lower_bound,'$0,000.00') 
+                          || ' - ' 
+                          || to_char(higher_bound,'$9,000.00') 
+                          || ': '
+                          || to_char(v_n));
+  END LOOP;
+END;
+
+
+4)
+DECLARE
+  TYPE date_type IS TABLE OF date INDEX BY PLS_INTEGER;
+  date_count date_type;
+  TYPE day_type IS TABLE OF number INDEX BY PLS_INTEGER;
+  day_count day_type; 
+  v_bug_record_count NUMBER;
+  v_initial_date DATE := '01-MAY-14';
+  v_day DATE;
+  v_bugs_count number:=0;
+  v_max number := 0;
+BEGIN
+  select count(*)
+  INTO v_bug_record_count
+  from bugs
+  where reported_date > '30-Apr-2014';
+  
+  dbms_output.put_line(RPAD('Date',15) || 'Number of Open Bugs');
+  
+  FOR i in 1..31 LOOP
+    v_day := v_initial_date+i-1;
+    
+    select count(*)
+    INTO v_bugs_count
+    from (select * from bugs where CLOSED_DATE >= v_day OR CLOSED_DATE is NULL) t
+    where t.reported_date <= v_day;
+    dbms_output.put_line(RPAD(to_char(v_day,'DD-MON-YYYY'),24 )|| to_char(v_bugs_count));
+    date_count(i):=v_day;
+    day_count(i):=v_bugs_count;
+
+    IF v_bugs_count > v_max THEN
+      v_max := v_bugs_count;
+    END IF;
+  
+  END LOOP;
+    
+    dbms_output.put_line('The maximum number of open bugs on a single day is ' || to_char(v_max) || '.');
+    
+  FOR k in 1..31 LOOP
+    IF day_count(k) >= v_max THEN  
+      dbms_outPut.put_line('There were ' ||to_char(day_count(k))||' open bugs on '||date_count(k) || '.');
+    END if;
+  END LOOP;
+
+END;
+
+

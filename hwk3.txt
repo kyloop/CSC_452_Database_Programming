@@ -1,0 +1,309 @@
+Kai_Chung_Ying_hw3.txt
+
+1)
+accept input_1 prompt 'Please enter a positive integer: ';
+DECLARE
+  v_input NUMBER := '&input_1';
+  
+  CURSOR c_baby IS
+                  select sex,rank,given_name,number_of_occurrences 
+                  FROM baby_name 
+                  where rank <= v_input
+                  order by sex, rank;
+                  
+  v_given_name BABY_NAME.GIVEN_NAME%type;
+  v_sex BABY_NAME.SEX%type;
+  v_rank BABY_NAME.RANK%type;
+  v_occurrences BABY_NAME.NUMBER_OF_OCCURRENCES%type;
+  v_sex_full varchar2(7);
+  v_check_double varchar(7) :='preset';
+  
+BEGIN
+  open c_baby;
+    if (v_input<=0 OR v_input is NULL )THEN
+      DBMS_OUTPUT.PUT_LINE('Invalid number!');
+    ELSE
+      DBMS_OUTPUT.PUT_LINE(RPAD('Sex',15) ||RPAD('Rank',10) || RPAD('Given Name',20) || RPAD('Number of Occurrences',25));
+      DBMS_OUTPUT.PUT_LINE(RPAD('-',70,'-'));
+      
+      LOOP
+          
+          FETCH c_baby INTO v_sex,v_rank,v_given_name,v_occurrences;
+          EXIT WHEN c_baby%NOTFOUND;
+          
+          IF v_sex = 'F' THEN
+             v_sex_full := 'Female';             
+          else 
+             v_sex_full := 'Male';
+          end if;
+          
+          if v_sex_full != v_check_double THEN
+            DBMS_OUTPUT.PUT_LINE(RPAD(v_sex_full,18) 
+                              || RPAD(to_char(v_rank),8) 
+                              || RPAD(v_given_name,33) 
+                              || to_char(v_occurrences));
+             v_check_double:=v_sex_full;
+          ELSE
+            DBMS_OUTPUT.PUT_LINE(RPAD(' ',18,' ') 
+                              || RPAD(to_char(v_rank),8)
+                              || RPAD(v_given_name,33)
+                              || to_char(v_occurrences));
+            v_check_double:=v_sex_full;
+          END IF;    
+      END LOOP;
+  END IF;
+  close c_baby;
+END;
+
+
+2)
+DECLARE
+  v_num_emp number:=0;
+  v_min_tot_pay number:=0;
+  v_max_tot_pay number:=0;
+  v_avg_tot_pay number:=0;
+  
+  --MAKE THE JOIN TABLE OF EMPLOYEE AND DEPARTMENT
+  CURSOR  c_t IS
+                select d.department_id,
+                       d.department_name,
+                       d.location,
+                       count(e.employee_id) as num_dept_emp,
+                       0.8 * max(NVL(e.salary,0)+NVL(e.commission,0)) AS MAX_PAY_DOT80,
+                       1.11 * min(NVL(e.salary,0)+NVL(e.commission,0)) AS MIN_PAY_1DOT11,
+                       avg(NVL(e.salary,0)+NVL(e.commission,0)) AS AVG_PAY
+                from department d
+                LEFT OUTER JOIN employee e
+                on d.department_id=e.department_id
+                group by d.department_id, d.department_name, d.location
+                order by department_id;
+  
+  v_newt c_t%rowtype;
+
+BEGIN
+  select count(*)
+  into v_num_emp
+  from employee;
+  dbms_output.put_line(RPAD('NUMBER OF EMPLOYEES:',45)||TO_CHAR(v_num_emp));
+  dbms_output.put_line(RPAD('-',47,'-'));
+  
+  
+  
+  IF v_num_emp = 0 THEN
+    NULL;
+  ELSE
+    select max(NVL(salary,0)+NVL(commission,0))
+    into v_max_tot_pay
+    from employee;
+
+    select min(NVL(salary,0)+NVL(commission,0))
+    into v_min_tot_pay
+    from employee;
+    
+    select avg(NVL(salary,0)+NVL(commission,0))
+    into v_avg_tot_pay
+    from employee;
+    
+    dbms_output.put_line(RPAD('COMPANY MAXIMUM TOTAL PAY:',37)||TO_CHAR(v_max_tot_pay, '$9,990.00'));
+    dbms_output.put_line(RPAD('COMPANY MIMIMUM TOTAL PAY:',37)||TO_CHAR(v_min_tot_pay, '$9,990.00'));
+    dbms_output.put_line(RPAD('COMPANY AVERAGE TOTAL PAY:',37)||TO_CHAR(v_avg_tot_pay, '$9,990.00'));
+    dbms_output.put_line(RPAD('-',47,'-'));
+    
+    OPEN c_t;
+    LOOP
+      fetch c_t into v_newt;
+      EXIT WHEN c_t%NOTFOUND;
+         
+        dbms_output.put_line(RPAD('DEPARTMENT ID:',45)||TO_CHAR(v_newt.department_id));
+        
+        IF V_NEWT.AVG_PAY>V_NEWT.MAX_PAY_DOT80 AND V_NEWT.AVG_PAY<V_NEWT.MIN_PAY_1DOT11 THEN
+          dbms_output.put_line(RPAD('DEPARTMENT NAME:',37)||LPAD(TO_CHAR(v_newt.department_NAME),10)||'***');
+        ELSE
+          dbms_output.put_line(RPAD('DEPARTMENT NAME:',37)||LPAD(TO_CHAR(v_newt.department_NAME),10));
+        END IF;
+        
+        dbms_output.put_line(RPAD('LOCATION:',37)||LPAD(v_newt.location,10));
+        dbms_output.put_line(RPAD('NUMBER OF EMPLOYEES:',46)||TO_CHAR(v_newt.num_dept_emp));
+        dbms_output.put_line(RPAD('MAXIMUM TOTAL PAY * 80%:',37)||LPAD(TO_CHAR(v_newt.MAX_PAY_DOT80,'$9,990.00'),10));
+        dbms_output.put_line(RPAD('MINIMUM TOTAL PAY * 111%:',37)||LPAD(TO_CHAR(v_newt.MIN_PAY_1DOT11,'$9,990.00'),10));
+        dbms_output.put_line(RPAD('AVERAGE TOTAL PAY:',37)||LPAD(TO_CHAR(v_newt.AVG_PAY,'$9,990.00'),10));
+        dbms_output.put_line(RPAD('-',47,'-'));
+
+    END LOOP;
+    close c_t;
+  END IF;
+END;
+
+
+3)
+DECLARE
+  --Set the cursor from the auto_service table
+  CURSOR c_auto IS
+                  select vin,
+                        count(vin) AS numofservice,
+                        min(service_date) AS min_date,
+                        max(service_date) AS max_date,
+                        min(service_price) AS min_price,
+                        max(service_price) AS max_price
+                  from auto_service 
+                  group by vin
+                  --Check condition for number of service larger than 2 times
+                  having count(vin)>2 
+                  order by vin;
+  v_auto c_auto%rowtype;
+  first_service_price auto_service.service_price%type;
+  last_service_price auto_service.service_price%type;
+  date_min_price AUTO_SERVICE.SERVICE_DATE%type;
+  date_max_price AUTO_SERVICE.SERVICE_DATE%type;
+  
+BEGIN
+  OPEN c_auto;
+    FETCH c_auto into  v_auto;
+    --Check if there is any data coming in from the cursor active set
+    IF c_auto%NOTFOUND THEN
+      dbms_output.put_line('NO OUTPUT');
+    ELSE
+      --Display the title of the table
+      dbms_output.put_line(RPAD('VIN',10) 
+                            || RPAD('# of Services',17)
+                            || RPAD('First Service Date (Price)',30)
+                            || RPAD('Last Service Date (Price)',30)
+                            || RPAD('Min Price (Service Date)',30)
+                            || RPAD('Max Price (Service Date)',30));
+      dbms_output.put_line(RPAD('-',141,'-'));
+      
+      --Set the while loop for checking if there is any found data coming in 
+      while c_auto%found LOOP
+        -- Check the first and last service within (01-FEB-04) and (31-MAR-13)
+        IF (v_auto.min_date > '01-FEB-04') AND (v_auto.min_date < '31-MAR-13') 
+            AND (v_auto.max_date> '01-FEB-04') AND (v_auto.max_date< '31-MAR-13') THEN
+          
+          --Query the service price on the first date of service
+          select service_price
+          INTO first_service_price
+          from auto_service
+          where SERVICE_DATE= v_auto.min_date and vin=v_auto.vin;
+          
+          --Query the service price on the last date of service
+          select service_price
+          INTO last_service_price
+          from auto_service
+          where SERVICE_DATE= v_auto.max_date and vin=v_auto.vin;
+          
+          --Query the service date with the Minimum Price
+          select service_date
+          into date_min_price
+          from auto_service
+          where SERVICE_price= v_auto.min_price and vin=v_auto.vin;
+          
+          --Query the service date with the Maximum Price
+          select service_date
+          into date_max_price
+          from auto_service
+          where SERVICE_price= v_auto.max_price and vin=v_auto.vin;
+
+          --Display all the output
+          dbms_output.put_line(RPAD(v_auto.VIN,22) 
+                                || RPAD(v_auto.numofservice,8)
+                                || RPAD(v_auto.min_date,10)
+                                || RPAD('(',2) 
+                                || RPAD(to_char(first_service_price,'$9,990.00'),10)
+                                || RPAD(')',7) 
+                                || RPAD(v_auto.max_date,10)
+                                || RPAD('(',2)
+                                || RPAD(to_char(last_service_price,'$9,990.00'),10)
+                                || RPAD(')',10) 
+                                || RPAD(to_char(v_auto.min_price,'$990.00'),9)
+                                || RPAD('(',1) 
+                                || RPAD(date_min_price,9)
+                                || RPAD(')',11) 
+                                || RPAD(to_char(v_auto.max_price,'$990.00'),9)
+                                || RPAD('(',1) 
+                                || RPAD(date_max_price,9)
+                                || RPAD(')',7) 
+                                );
+          FETCH c_auto into  v_auto;
+        ELSE
+          FETCH c_auto into  v_auto;
+        END IF;
+
+      END LOOP;   
+    
+    END IF;
+  CLOSE c_auto;
+END;
+
+4)
+DECLARE
+  --set cursor from the original bugs table.
+  Cursor c_bugs IS
+                  select *
+                  from bugs
+                  where reported_date >= '01-May-14' 
+                  and   (closed_date   >= '01-May-14' OR closed_date is NULL); 
+                  
+  v_bugs c_bugs%rowtype;                    
+  v_bug_record_count NUMBER;
+  v_initial_date DATE := '01-MAY-14';
+  v_day DATE;
+  v_bugs_count number:=0;
+  v_max number := 0;
+  
+BEGIN
+  --Present the 31 days in May
+  FOR i in 1..31 LOOP
+    v_day := v_initial_date+i-1;
+            
+      --Query the number of bugs
+      select count(*)
+      INTO v_bugs_count
+      from (select * from bugs where CLOSED_DATE >= v_day OR CLOSED_DATE is NULL) t
+      where t.reported_date <= v_day;    
+    
+    --Find the maximum bug numbers
+    IF v_bugs_count > v_max THEN
+      v_max := v_bugs_count;
+    END IF;
+  END LOOP;
+    
+  --Display the title  
+  dbms_output.put_line(RPAD('Number of Open Bugs',31) || 'Date');
+  
+  --Reset the initial date
+  v_initial_date := '01-MAY-14';
+  --Sort the number of open bugs column
+  FOR k in REVERSE 0..v_max LOOP
+    --Sort the Date column
+    FOR i in 1..31 LOOP
+      v_day := v_initial_date+i-1;  
+      --Query the number of bugs
+      select count(*)
+      INTO v_bugs_count
+      from (select * from bugs where CLOSED_DATE >= v_day OR CLOSED_DATE is NULL) t
+      where t.reported_date <= v_day;
+      --display the query result
+      if v_bugs_count=k THEN
+        dbms_output.put_line(LPAD(to_char(k),10) || '   ' ||LPAD(v_day,25));
+      end IF;
+    END LOOP;
+  END LOOP;
+
+  --Display output
+  dbms_output.put_line(RPAD('-',38,'-'));
+  dbms_output.put_line('The maximum number of open bugs on a single day is ' || to_char(v_max) || '.');
+
+    --LOOP to find the date with the maximum bugs number
+    FOR i in 1..31 LOOP
+      v_day := v_initial_date+i-1;  
+      
+      --Query the number of bugs
+      select count(*)
+      INTO v_bugs_count
+      from (select * from bugs where CLOSED_DATE >= v_day OR CLOSED_DATE is NULL) t
+      where t.reported_date <= v_day;
+      --Catch all the dates with the maximum number of bugs
+      if v_bugs_count=v_max THEN
+        dbms_output.put_line('There were '|| to_char(v_max)||' open bugs on ' || v_day ||'.');
+      end IF;
+    END LOOP;
+END;
