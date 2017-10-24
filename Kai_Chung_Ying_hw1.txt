@@ -1,0 +1,52 @@
+Kai Chung, Ying_hw1
+===================
+Part II
+===================
+1)
+SELECT workerT.employee_id AS "EMPLOYEE ID", 
+      workerT.EMPLOYEE_NAME AS "EMPLOYEE_NAME",
+      workerT.JOB_TITLE AS "EMPOLYEE JOB TITLE",      
+      NVL(to_char(workerT.HIRE_DATE,'DD-MON-YYYY'),'31-DEC-9999') AS "EMPLOYEE HIRE DATE",
+      NVL(managerT.EMPLOYEE_NAME,'------') AS "MANAGER NAME",
+      NVL(managerT.JOB_TITLE,'------') AS "MANAGER JOB TITLE",
+      NVL(to_char(managerT.HIRE_DATE,'DD-MON-YYYY'), '31-DEC-9999') AS "MANAGER HIRE DATE"
+FROM	employee workerT
+LEFT OUTER JOIN employee managerT
+ON workerT.manager_ID= managerT.employee_id
+ORDER BY workerT.employee_id;
+
+2)
+SELECT d.DEPARTMENT_NAME AS "DEPARTMENT NAME", 
+	to_char(max(NVL(e.SALARY,0) + NVL(e.COMMISSION,0)),'$9,990.00') 
+	AS "MAXIMUM TOTAL PAY",
+	to_char(NVL(min(e.HIRE_DATE),'31-DEC-9999'),'DD-MON-YYYY') 
+	AS "MINIMUM HIRE DATE",
+	COUNT(e.EMPLOYEE_ID) AS "TOTAL NUMBER OF EMPLOYEES"
+FROM	DEPARTMENT d 
+LEFT OUTER JOIN 	EMPLOYEE e
+ON	d.DEPARTMENT_ID = e.DEPARTMENT_ID
+GROUP BY	d.DEPARTMENT_NAME
+ORDER by	d.DEPARTMENT_NAME;
+
+3)
+SELECT d.DEPARTMENT_ID AS "DEPARTMENT ID",
+       d.DEPARTMENT_NAME AS "DEPARTMENT NAME",
+       e.employee_id AS "EMPLOYEE ID",
+       e.employee_name AS "EMPLOYEE NAME",
+       e.job_title AS "JOB TITLE",
+       to_char(e.HIRE_DATE,'DD-MON-YYYY') AS "HIRE DATE"
+FROM	department d 
+LEFT OUTER JOIN EMPLOYEE e
+ON	d.department_id=e.department_id
+WHERE	e.hire_date IN (SELECT MAX(hire_date) from employee group by department_id)
+ORDER BY	d.department_name,  e.EMPLOYEE_NAME;
+
+4)
+SELECT max(department_name) AS "DEPARTMENT NAME", LOCATION 
+FROM (select d.department_name, d.location,
+	COUNT (e.employee_id)
+	FROM DEPARTMENT d, employee e
+	WHERE (d.DEPARTMENT_ID = e.DEPARTMENT_ID) and 
+		(UPPER(d.location) != UPPER('dallas'))
+	GROUP BY	d.location, d.department_name)
+GROUP BY LOCATION;
